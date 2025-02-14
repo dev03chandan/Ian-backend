@@ -9,6 +9,7 @@ import uvicorn
 from pdf2image import convert_from_bytes
 import pytesseract
 from openai import OpenAI
+from docx import Document
 
 # Initialize OpenAI API client.
 app = FastAPI()
@@ -24,7 +25,6 @@ def extract_text_from_dita(file_path: str) -> str:
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()
-        # Join all text (including tail) with a single space.
         full_text = " ".join(text.strip() for text in root.itertext() if text.strip())
         return full_text
     except ET.ParseError as e:
@@ -40,23 +40,17 @@ def load_far_regulatory_data() -> dict:
         "https://www.acquisition.gov/sites/default/files/current/far/compiled_dita/"
     )
     dita_files = [
-        # Pricing & Payment Terms
         "part_52/52.232-25.dita",
-        # Subcontracting Restrictions
         "part_52/52.244-2.dita",
-        # Penalties for Non-Performance
         "part_52/52.249-8.dita",
         "part_52/52.249-9.dita",
         "part_52/52.249-10.dita",
-        # Vendor Eligibility & Registration
         "part_9/9.103.dita",
         "part_52/52.209-5.dita",
-        # Conflict of Interest & Undisclosed Relationships
         "part_3/3.101-1.dita",
         "part_9/9.505.dita",
     ]
 
-    # Determine unique parts to download the respective ZIP files.
     parts = set(f.split("/")[0] for f in dita_files)
     zip_files = {}
     for part in parts:
@@ -68,7 +62,6 @@ def load_far_regulatory_data() -> dict:
         else:
             print(f"Error downloading {part}.zip: Status code {response.status_code}")
 
-    # Create an output folder for extraction.
     output_folder = "extracted_dita"
     os.makedirs(output_folder, exist_ok=True)
 
@@ -78,7 +71,6 @@ def load_far_regulatory_data() -> dict:
         if part in zip_files:
             zip_ref = zip_files[part]
             if file_name in zip_ref.namelist():
-                # Extract file to output folder.
                 zip_ref.extract(file_name, output_folder)
                 dita_file_path = os.path.join(output_folder, file_name)
                 extracted_texts[file_name] = extract_text_from_dita(dita_file_path)
@@ -89,19 +81,41 @@ def load_far_regulatory_data() -> dict:
     return extracted_texts
 
 
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """
+    Convert a PDF file into images, then extract text using OCR (Tesseract).
+    """
+    try:
+        images = convert_from_bytes(file_bytes)
+        text = "\n".join(pytesseract.image_to_string(image) for image in images)
+        return text.strip()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing PDF: {e}")
+
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """
+    Extract text from a DOCX file using python-docx.
+    """
+    try:
+        doc = Document(io.BytesIO(file_bytes))
+        text = "\n".join([para.text for para in doc.paragraphs])
+        return text.strip()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing DOCX: {e}")
+
+
 def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
     """
     Constructs a prompt that includes the FAR regulatory details and the contract text.
     Sends the prompt to OpenAI and returns the analysis result.
     """
-    # Combine regulatory texts into a single block.
     regulatory_info = "\n\n".join(
         [f"{key}:\n{value}" for key, value in regulatory_data.items()]
     )
 
-    # System message with detailed instructions.
     system_message = (
-        "You are a contract compliance analyst specialized in evaluating contracts against Federal Acquisition Regulations (FAR). "
+        "You are a contract compliance analyst specializing in evaluating contracts against Federal Acquisition Regulations (FAR). "
         "Your responsibilities include:\n"
         "1. Breaking down the contract into key sections.\n"
         "2. Extracting key clauses and comparing them to the regulatory reference data.\n"
@@ -117,7 +131,6 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
         "Ensure that your analysis is clear, structured, and concise."
     )
 
-    # User message including the FAR reference and the contract text.
     user_message = (
         f"Below is the regulatory reference information:\n\n{regulatory_info}\n\n"
         f'Below is the contract text to be analyzed:\n"""\n{contract_text}\n"""'
@@ -125,7 +138,7 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",  # You can change this model as needed.
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message},
@@ -133,10 +146,9 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
             temperature=0.2,
             max_tokens=1500,
         )
-        analysis_result = response.choices[0].message.content
+        return response.choices[0].message.content
     except Exception as e:
-        analysis_result = f"Error in OpenAI API call: {e}"
-    return analysis_result
+        return f"Error in OpenAI API call: {e}"
 
 
 @app.on_event("startup")
@@ -148,7 +160,6 @@ def startup_event():
     global client
     regulatory_data = load_far_regulatory_data()
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    # Set your OpenAI API key (make sure to have it in your environment variables)
     if not os.getenv("OPENAI_API_KEY"):
         print("Warning: OPENAI_API_KEY is not set in environment variables.")
 
@@ -156,32 +167,25 @@ def startup_event():
 @app.post("/analyze_contract/")
 async def analyze_contract_endpoint(file: UploadFile = File(...)):
     """
-    Endpoint that accepts a PDF file, performs OCR to extract its text, and returns
-    the analysis comparing the contract text to the FAR regulatory details.
+    Accepts a PDF or DOCX file, extracts its text, and analyzes it against FAR regulatory data.
     """
-    # Read the uploaded file.
     file_bytes = await file.read()
+    file_extension = file.filename.split(".")[-1].lower()
 
-    # Convert PDF bytes to images. Requires poppler (used by pdf2image).
-    try:
-        images = convert_from_bytes(file_bytes)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error converting PDF: {e}")
-
-    # Perform OCR on each image to extract text.
-    contract_text = ""
-    for image in images:
-        text = pytesseract.image_to_string(image)
-        contract_text += text + "\n"
-
-    print(f"Contract text:\n{contract_text}")
+    if file_extension == "pdf":
+        contract_text = extract_text_from_pdf(file_bytes)
+    elif file_extension == "docx":
+        contract_text = extract_text_from_docx(file_bytes)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file format. Only PDF and DOCX are allowed.",
+        )
 
     if not contract_text.strip():
-        raise HTTPException(status_code=400, detail="No text extracted from PDF")
+        raise HTTPException(status_code=400, detail="No text extracted from file.")
 
-    # Call OpenAI API to analyze the contract against the FAR regulatory data.
     analysis_result = analyze_contract(contract_text, regulatory_data)
-
     return {"analysis": analysis_result}
 
 
