@@ -7,3 +7,4 @@ pytesseract
 openai
 python-multipart
 python-docx
+fuzzywuzzy
