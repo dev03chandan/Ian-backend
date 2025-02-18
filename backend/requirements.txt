@@ -1,0 +1,10 @@
+fastapi 
+uvicorn 
+requests 
+pdf2image 
+pillow 
+pytesseract 
+openai
+python-multipart
+python-docx
+fuzzywuzzy
