@@ -26,3 +26,5 @@ yarn-error.log*
 # backend
 backend/venv
 backend/extracted_dita
+*.pyc
+backend/__pycache__
