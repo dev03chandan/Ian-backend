@@ -1,24 +1,23 @@
+// src/components/Dashboard.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import ComplianceReport from "./components/ComplianceReport";
-import FraudHunterAI from "./components/FraudHunterAI";
-import AIContractWatchdog from "./components/AIContractWatchdog";
+import Navbar from "./Navbar";
+import FraudHunterAI from "./FraudHunterAI";
+import AIContractWatchdog from "./AIContractWatchdog";
 
-function App() {
+const Dashboard = () => {
   return (
     <Router>
-      <Navbar /> {/* Global Navbar appears on all pages */}
+      <Navbar />
       <div style={styles.pageContainer}>
         <Routes>
-          <Route path="/" element={<ComplianceReport />} />
           <Route path="/fraud-hunter" element={<FraudHunterAI />} />
           <Route path="/contract-watchdog" element={<AIContractWatchdog />} />
         </Routes>
       </div>
     </Router>
   );
-}
+};
 
 const styles = {
   pageContainer: {
@@ -28,4 +27,4 @@ const styles = {
   },
 };
 
-export default App;
+export default Dashboard;

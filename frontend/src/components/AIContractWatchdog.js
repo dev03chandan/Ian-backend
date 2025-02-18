@@ -1,14 +1,17 @@
 // src/components/AIContractWatchdog.js
-
 import React, { useState } from "react";
+import MarkdownDisplay from "./MarkdownDisplay";
 
 const AIContractWatchdog = () => {
+  // Store the files (including the file object) and analysis output
   const [files, setFiles] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
+  const [analysisResult, setAnalysisResult] = useState("");
 
+  // Update the state to include the actual file objects
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     const newFiles = selectedFiles.map((file) => ({
+      file, // store the file object for later upload
       name: file.name,
       size: file.size,
       progress: 0,
@@ -17,7 +20,30 @@ const AIContractWatchdog = () => {
   };
 
   const handleUpload = () => {
-    files.forEach((file, index) => {
+    files.forEach((fileItem, index) => {
+      const formData = new FormData();
+      // Append the file with key "file" (make sure your FastAPI endpoint accepts this key)
+      formData.append("file", fileItem.file);
+
+      // POST the file to your FastAPI /analyze_contract endpoint
+      fetch("http://localhost:8000/analyze_contract/", {
+        method: "POST",
+        body: formData,
+      })
+        .then((response) => {
+          console.log("Raw response:", response); // <-- Step 1
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Parsed JSON:", data); // <-- Step 2
+          setAnalysisResult(data.analysis);
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+      
+
+      // Simulate upload progress (this is just for UI feedback)
       const intervalId = setInterval(() => {
         setFiles((prevFiles) => {
           const updatedFiles = [...prevFiles];
@@ -87,13 +113,16 @@ const AIContractWatchdog = () => {
       <button style={styles.uploadButton} onClick={handleUpload}>
         Upload
       </button>
+
+      {/* Display the analysis result if available */}
+      {analysisResult && (
+        <MarkdownDisplay analysisText={analysisResult} />
+      )}
     </div>
   );
 };
 
-export default AIContractWatchdog;
-
-// Optional inline styles for demonstration
+// Inline styles for the component
 const styles = {
   container: {
     maxWidth: "600px",
@@ -143,4 +172,12 @@ const styles = {
     borderRadius: "4px",
     border: "none",
   },
+  resultContainer: {
+    marginTop: "2rem",
+    backgroundColor: "#f9f9f9",
+    padding: "1rem",
+    borderRadius: "8px",
+  },
 };
+
+export default AIContractWatchdog;
