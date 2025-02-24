@@ -10,6 +10,11 @@ from typing import List
 from fuzzywuzzy import fuzz
 from fastapi import APIRouter
 
+import json
+from database import get_db
+from .auth import get_current_user, User
+from fastapi import Depends
+
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
@@ -269,14 +274,50 @@ def analyze_invoices(invoices: List[Invoice]) -> List[InvoiceFraudReport]:
 
     return reports
 
-
 @router.post("/upload-csv-invoices/")
-async def upload_csv_invoices(file: UploadFile = File(...)):
-    """Upload a CSV file for invoice fraud analysis."""
+async def upload_csv_invoices(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a CSV file for invoice fraud analysis and store results."""
     file_data = await file.read()
     invoices = parse_csv_invoices(file_data)
     analysis_report = analyze_invoices(invoices)
+    
+    # Calculate overall risk level based on analysis
+    highest_risk_score = max(report.risk_score for report in analysis_report)
+    risk_level = (
+        "HIGH" if highest_risk_score >= 80
+        else "MEDIUM" if highest_risk_score >= 40
+        else "LOW"
+    )
+
+    # Store the document and analysis in the database
+    with get_db() as db:
+        cursor = db.execute('''
+        INSERT INTO documents (
+            user_id,
+            document_name,
+            document_type,
+            upload_date,
+            status,
+            risk_level,
+            report_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            current_user.id,
+            file.filename,
+            'invoice',
+            datetime.utcnow().isoformat(),
+            'processed',
+            risk_level,
+            json.dumps({"invoices": [inv.dict() for inv in invoices],
+                       "analysis": [report.dict() for report in analysis_report]})
+        ))
+        document_id = cursor.lastrowid
+
     return {
+        "document_id": document_id,
         "parsed_invoices": [inv.dict() for inv in invoices],
-        "analysis_report": [report.dict() for report in analysis_report],
+        "analysis_report": [report.dict() for report in analysis_report]
     }

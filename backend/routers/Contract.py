@@ -8,7 +8,7 @@ from datetime import datetime
 from collections import Counter, defaultdict
 from typing import List
 from fuzzywuzzy import fuzz
-
+from fastapi import Depends
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -20,12 +20,17 @@ import pytesseract
 from openai import OpenAI
 from docx import Document
 from pydantic import BaseModel, Field
+import json
+from database import get_db
+from .auth import get_current_user, User
+from contextlib import asynccontextmanager
 
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import APIRouter   
 
 router = APIRouter()
+
 
 regulatory_data = {}
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -125,9 +130,11 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
     Constructs a prompt that includes the FAR regulatory details and the contract text.
     Sends the prompt to OpenAI and returns the analysis result.
     """
+    print("DEBUG: ", regulatory_data)
     regulatory_info = "\n\n".join(
         [f"{key}:\n{value}" for key, value in regulatory_data.items()]
     )
+    
 
     system_message = (
         "You are a contract compliance analyst specializing in evaluating contracts against Federal Acquisition Regulations (FAR). "
@@ -164,12 +171,29 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
         return response.choices[0].message.content
     except Exception as e:
         return f"Error in OpenAI API call: {e}"
-    
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global regulatory_data
+    try:
+        regulatory_data = load_far_regulatory_data()
+        yield
+    except Exception as e:
+        print(f"Error during startup: {e}")
+        regulatory_data = {}
+    finally:
+        print("Application shutdown")
+
 
 @router.post("/analyze_contract/")
-async def analyze_contract_endpoint(file: UploadFile = File(...)):
+async def analyze_contract_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Accepts a PDF or DOCX file, extracts its text, and analyzes it against FAR regulatory data.
+    Accepts a PDF or DOCX file, extracts its text, analyzes it against FAR regulatory data,
+    and stores the results in the database.
     """
     file_bytes = await file.read()
     file_extension = file.filename.split(".")[-1].lower()
@@ -187,5 +211,41 @@ async def analyze_contract_endpoint(file: UploadFile = File(...)):
     if not contract_text.strip():
         raise HTTPException(status_code=400, detail="No text extracted from file.")
 
+    # Analyze the contract
     analysis_result = analyze_contract(contract_text, regulatory_data)
-    return {"analysis": analysis_result}
+    
+    # Extract risk level from the analysis
+    risk_level = "HIGH"  # Default value
+    if "Overall Compliance Risk Score: " in analysis_result:
+        score = int(analysis_result.split("Overall Compliance Risk Score: ")[1].split("%")[0])
+        print('Score: ', score)
+        risk_level = "HIGH" if score < 50 else "MEDIUM" if score < 75 else "LOW"
+
+    # Store the document and analysis in the database
+    with get_db() as db:
+        cursor = db.execute('''
+        INSERT INTO documents (
+            user_id,
+            document_name,
+            document_type,
+            upload_date,
+            status,
+            risk_level,
+            report_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            current_user.id,
+            file.filename,
+            'contract',
+            datetime.utcnow().isoformat(),
+            'processed',
+            risk_level,
+            analysis_result
+        ))
+        document_id = cursor.lastrowid
+
+    return {
+        "analysis": analysis_result,
+        "document_id": document_id,
+        "risk_level": risk_level
+    }
