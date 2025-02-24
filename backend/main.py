@@ -22,7 +22,10 @@ from docx import Document
 from pydantic import BaseModel, Field
 
 from fastapi.middleware.cors import CORSMiddleware
-from routers import contract_router, invoice_router
+from routers import contract_router, invoice_router, auth_router
+from routers.auth import get_current_user
+from fastapi import Depends
+
 
 
 # Initialize FastAPI app
@@ -36,9 +39,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(contract_router, tags=["Contracts"])
+app.include_router(auth_router, tags=["Authentication"])
 
-app.include_router(invoice_router, tags=["Invoices"])
+app.include_router(contract_router, tags=["Contracts"], dependencies=[Depends(get_current_user)])
+
+app.include_router(invoice_router, tags=["Invoices"], dependencies=[Depends(get_current_user)])
 
 
 if __name__ == "__main__":

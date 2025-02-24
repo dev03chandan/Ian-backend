@@ -3,8 +3,12 @@ uvicorn
 requests 
 pdf2image 
 pillow 
+jwt
 pytesseract 
+python-Levenshtein
 openai
 python-multipart
 python-docx
 fuzzywuzzy
+python-jose[cryptography] 
+python-multipart
