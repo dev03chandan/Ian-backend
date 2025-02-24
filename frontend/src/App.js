@@ -1,31 +1,37 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import ComplianceReport from "./components/ComplianceReport";
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import StartingPage from "./components/StartingPage";
+import Login from "./components/Login";
 import FraudHunterAI from "./components/FraudHunterAI";
 import AIContractWatchdog from "./components/AIContractWatchdog";
 
 function App() {
   return (
-    <Router>
-      <Navbar /> {/* Global Navbar appears on all pages */}
-      <div style={styles.pageContainer}>
+    <AuthProvider>
+      <Router>
         <Routes>
-          <Route path="/" element={<ComplianceReport />} />
-          <Route path="/fraud-hunter" element={<FraudHunterAI />} />
-          <Route path="/contract-watchdog" element={<AIContractWatchdog />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <StartingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/fraud-hunter" element={
+            <ProtectedRoute>
+              <FraudHunterAI />
+            </ProtectedRoute>
+          } />
+          <Route path="/contract-watchdog" element={
+            <ProtectedRoute>
+              <AIContractWatchdog />
+            </ProtectedRoute>
+          } />
         </Routes>
-      </div>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
-
-const styles = {
-  pageContainer: {
-    padding: "20px",
-    maxWidth: "1200px",
-    margin: "0 auto",
-  },
-};
 
 export default App;

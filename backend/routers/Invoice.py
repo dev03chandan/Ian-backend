@@ -312,7 +312,7 @@ async def upload_csv_invoices(
             'processed',
             risk_level,
             json.dumps({"invoices": [inv.dict() for inv in invoices],
-                       "analysis": [report.dict() for report in analysis_report]})
+                    "analysis": [report.dict() for report in analysis_report]})
         ))
         document_id = cursor.lastrowid
 

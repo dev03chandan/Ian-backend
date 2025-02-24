@@ -1,10 +1,13 @@
-// src/components/FraudHunterAI.js
 import React, { useState } from "react";
+import { useAuth } from '../context/AuthContext'; // Import the AuthContext
+import MarkdownDisplay from "./MarkdownDisplay"; // Assuming you want to display analysis results
+import { useNavigate } from 'react-router-dom';
 
 const FraudHunterAI = () => {
   const [files, setFiles] = useState([]);
-  const [parsedInvoices, setParsedInvoices] = useState([]);
-  const [analysisReport, setAnalysisReport] = useState([]);
+  const [analysisResult, setAnalysisResult] = useState("");
+  const { token } = useAuth(); // Get the token from AuthContext
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -24,37 +27,40 @@ const FraudHunterAI = () => {
 
       fetch("http://localhost:8000/upload-csv-invoices/", {
         method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}` // Include the token in the headers
+        },
         body: formData,
       })
-        .then((response) => response.json())
+        .then(response => {
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Handle unauthorized access
+              navigate('/login'); // Redirect to login if unauthorized
+              return;
+            }
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
         .then((data) => {
-          console.log("Backend response:", data);
-
-          // Update parsed invoices and analysis
-          setParsedInvoices(data.parsed_invoices || []);
-          setAnalysisReport(data.analysis_report || []);
-
-          // Set progress to 100% once done
-          setFiles((prevFiles) => {
-            const updated = [...prevFiles];
-            updated[index].progress = 100;
-            return updated;
-          });
+          console.log("Parsed JSON:", data);
+          setAnalysisResult(data.analysis_report); // Assuming the response contains an analysis report
         })
         .catch((error) => {
-          console.error("Error uploading file:", error);
+          console.error("Error:", error);
         });
 
-      // Simulate a progress bar for demonstration
+      // Simulate upload progress
       const intervalId = setInterval(() => {
         setFiles((prevFiles) => {
-          const updated = [...prevFiles];
-          if (updated[index].progress < 100) {
-            updated[index].progress += 5;
+          const updatedFiles = [...prevFiles];
+          if (updatedFiles[index].progress < 100) {
+            updatedFiles[index].progress += 5;
           } else {
             clearInterval(intervalId);
           }
-          return updated;
+          return updatedFiles;
         });
       }, 500);
     });
@@ -64,10 +70,7 @@ const FraudHunterAI = () => {
     <div style={styles.container}>
       <h1 style={styles.title}>Fraud Hunter AI</h1>
       <p style={styles.description}>
-        Analyzes invoices and payments to detect fraud, uncover financial
-        discrepancies, and flag suspicious transactions in real time. Using
-        cutting-edge AI, it prevents duplicate billing, overpricing, and vendor
-        fraud—protecting your finances before losses occur.
+        Analyzes invoices and payments to detect fraud, uncover financial discrepancies, and flag suspicious transactions in real time.
       </p>
 
       <div style={styles.uploadBox}>
@@ -118,129 +121,18 @@ const FraudHunterAI = () => {
         Upload
       </button>
 
-      {/* Display the parsed invoices in a table */}
-      <ParsedInvoices invoices={parsedInvoices} />
-
-      {/* Display the analysis report in card-style blocks */}
-      <AnalysisReport report={analysisReport} />
+      {/* Display the analysis result if available */}
+      {analysisResult && (
+        <MarkdownDisplay analysisText={analysisResult} />
+      )}
     </div>
   );
 };
 
-export default FraudHunterAI;
-
-/**
- * A table for parsed invoices.
- */
-function ParsedInvoices({ invoices }) {
-  if (!invoices || invoices.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: "2rem" }}>
-      <h2>Parsed Invoices</h2>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>Invoice ID</th>
-            <th style={styles.th}>Vendor</th>
-            <th style={styles.th}>Amount</th>
-            <th style={styles.th}>Payment Routing</th>
-            <th style={styles.th}>Invoice Date</th>
-            <th style={styles.th}>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((inv, idx) => (
-            <tr key={idx}>
-              <td style={styles.td}>{inv.invoice_id}</td>
-              <td style={styles.td}>{inv.vendor}</td>
-              <td style={styles.td}>{inv.amount}</td>
-              <td style={styles.td}>{inv.payment_routing}</td>
-              <td style={styles.td}>{inv.invoice_date}</td>
-              <td style={styles.td}>{inv.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/**
- * A card-based layout for the analysis report array.
- */
-function AnalysisReport({ report }) {
-  if (!report || report.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: "2rem" }}>
-      <h2>Analysis Report</h2>
-      {report.map((item, idx) => (
-        <div key={idx} style={styles.card}>
-          {/* Header row: invoice + risk level */}
-          <div style={styles.cardHeader}>
-            <div style={styles.invoiceId}>{item.invoice_id}</div>
-            <div style={{ ...styles.riskLevel, ...getRiskLevelStyle(item.risk_level) }}>
-              {item.risk_level}
-            </div>
-          </div>
-
-          <div style={styles.cardBody}>
-            <p>
-              <strong>Risk Score:</strong> {item.risk_score}
-            </p>
-            <p>
-              <strong>Final Recommendation:</strong> {item.final_recommendation}
-            </p>
-
-            {item.issues && item.issues.length > 0 && (
-              <div style={{ marginTop: "1rem" }}>
-                <strong>Issues:</strong>
-                <ul style={{ paddingLeft: "1.2rem", marginTop: "0.5rem" }}>
-                  {item.issues.map((issue, i) => (
-                    <li key={i} style={{ marginBottom: "0.5rem" }}>
-                      <p style={{ margin: 0 }}>
-                        <strong>{issue.issue}</strong>
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong>Severity:</strong> {issue.severity}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong>Risk Increase:</strong> {issue.risk_increase}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong>Recommended Action:</strong> {issue.recommended_action}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Helper to conditionally style the risk level text color.
- */
-function getRiskLevelStyle(riskLevel) {
-  if (riskLevel.includes("Safe")) {
-    return { color: "green" };
-  } else if (riskLevel.includes("Fraud")) {
-    return { color: "red" };
-  } else if (riskLevel.includes("Suspicious")) {
-    return { color: "orange" };
-  }
-  return { color: "#333" };
-}
-
-// Inline styles
+// Inline styles for the component
 const styles = {
   container: {
-    maxWidth: "800px",
+    maxWidth: "600px",
     margin: "0 auto",
     padding: "20px",
     fontFamily: "sans-serif",
@@ -251,7 +143,6 @@ const styles = {
   },
   description: {
     marginBottom: "2rem",
-    textAlign: "center",
   },
   uploadBox: {
     border: "2px dashed #ccc",
@@ -288,47 +179,12 @@ const styles = {
     borderRadius: "4px",
     border: "none",
   },
-
-  // Table styles for parsed invoices
-  table: {
-    borderCollapse: "collapse",
-    width: "100%",
-    marginTop: "1rem",
-  },
-  th: {
-    border: "1px solid #ddd",
-    padding: "8px",
-    backgroundColor: "#f2f2f2",
-    textAlign: "left",
-  },
-  td: {
-    border: "1px solid #ddd",
-    padding: "8px",
-  },
-
-  // Card styles for analysis report
-  card: {
-    backgroundColor: "#fff",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
+  resultContainer: {
+    marginTop: "2rem",
+    backgroundColor: "#f9f9f9",
     padding: "1rem",
-    marginBottom: "1rem",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-  },
-  cardHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    marginBottom: "0.5rem",
-  },
-  invoiceId: {
-    fontWeight: "bold",
-    fontSize: "1.1rem",
-  },
-  riskLevel: {
-    fontWeight: "bold",
-  },
-  cardBody: {
-    marginTop: "0.5rem",
+    borderRadius: "8px",
   },
 };
+
+export default FraudHunterAI;

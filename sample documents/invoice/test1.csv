@@ -1,0 +1,6 @@
+invoice_id,vendor,amount,gsa_standard,payment_routing,invoice_date,payment_delay_days,early_payment_requested,supporting_documents,description
+INV001,Vendor A,1200.50,1000.00,Cayman Islands,2025-01-15,10,False,True,Consulting services for Q1
+INV002,Vendor B,750.00,800.00,USA,2025-01-10,5,True,True,Office supplies
+INV003,Vendor C,5000.00,3500.00,Belize,2025-01-05,20,False,False,IT equipment purchase
+INV004,Vendor A,1190.00,1000.00,Cayman Islands,2025-01-15,10,True,True,Consulting services for Q1
+INV005,Vendor D,1500.00,1200.00,Panama,2025-01-20,35,False,False,Project management services

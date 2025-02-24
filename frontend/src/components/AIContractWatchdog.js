@@ -1,11 +1,15 @@
 // src/components/AIContractWatchdog.js
 import React, { useState } from "react";
 import MarkdownDisplay from "./MarkdownDisplay";
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const AIContractWatchdog = () => {
   // Store the files (including the file object) and analysis output
   const [files, setFiles] = useState([]);
   const [analysisResult, setAnalysisResult] = useState("");
+  const { token } = useAuth();
+  const navigate = useNavigate();
 
   // Update the state to include the actual file objects
   const handleFileChange = (e) => {
@@ -28,8 +32,22 @@ const AIContractWatchdog = () => {
       // POST the file to your FastAPI /analyze_contract endpoint
       fetch("http://localhost:8000/analyze_contract/", {
         method: "POST",
+        headers:{
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       })
+        .then(response => {
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Handle unauthorized access
+              navigate('/login');
+              return;
+            }
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
         .then((response) => {
           console.log("Raw response:", response); // <-- Step 1
           return response.json();
