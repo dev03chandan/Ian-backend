@@ -7,6 +7,7 @@ import Login from "./components/Login";
 import FraudHunterAI from "./components/FraudHunterAI";
 import AIContractWatchdog from "./components/AIContractWatchdog";
 import Navbar from "./components/Navbar";
+import Dashboard from "./components/Dashboard";
 
 function App() {
   return (
@@ -30,6 +31,11 @@ function App() {
               <AIContractWatchdog />
             </ProtectedRoute>
           } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard/>
+            </ProtectedRoute>
+          }/>
         </Routes>
       </Router>
     </AuthProvider>
