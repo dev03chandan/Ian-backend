@@ -125,11 +125,12 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
         raise HTTPException(status_code=400, detail=f"Error processing DOCX: {e}")
 
 
-def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
+def analyze_contract(contract_text: str) -> str:
     """
     Constructs a prompt that includes the FAR regulatory details and the contract text.
     Sends the prompt to OpenAI and returns the analysis result.
     """
+    regulatory_data = load_far_regulatory_data()
     print("DEBUG: ", regulatory_data)
     regulatory_info = "\n\n".join(
         [f"{key}:\n{value}" for key, value in regulatory_data.items()]
@@ -137,21 +138,23 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
     
 
     system_message = (
-        "You are a contract compliance analyst specializing in evaluating contracts against Federal Acquisition Regulations (FAR). "
-        "Your responsibilities include:\n"
-        "1. Breaking down the contract into key sections.\n"
-        "2. Extracting key clauses and comparing them to the regulatory reference data.\n"
-        "3. Focusing on these five compliance areas:\n"
-        "   - Pricing & Payment Terms (FAR 52.232-25)\n"
-        "   - Subcontracting Restrictions (FAR 52.244-2)\n"
-        "   - Penalties for Non-Performance\n"
-        "   - Vendor Eligibility & Registration (verify against SAM.gov requirements)\n"
-        "   - Conflict of Interest & Undisclosed Relationships\n"
-        "4. Flagging any missing or incomplete clauses.\n"
-        "5. Assigning a risk level for each area: Low (fully compliant), Medium (minor issues), or High (major non-compliance).\n"
-        "6. Calculating an overall compliance risk score (0-100%) and providing a concise summary of issues.\n"
-        "Ensure that your analysis is clear, structured, and concise."
-    )
+    "You are a contract compliance analyst specializing in evaluating contracts against Federal Acquisition Regulations (FAR). "
+    "Your responsibilities include:\n"
+    "1. Breaking down the contract into key sections.\n"
+    "2. Extracting key clauses and comparing them to the regulatory reference data.\n"
+    "3. Focusing on these five compliance areas:\n"
+    "   - Pricing & Payment Terms (FAR 52.232-25)\n"
+    "   - Subcontracting Restrictions (FAR 52.244-2)\n"
+    "   - Penalties for Non-Performance\n"
+    "   - Vendor Eligibility & Registration (verify against SAM.gov requirements)\n"
+    "   - Conflict of Interest & Undisclosed Relationships\n"
+    "4. Flagging any missing or incomplete clauses.\n"
+    "5. Assigning a risk level for each area: Low (fully compliant), Medium (minor issues), or High (major non-compliance).\n"
+    "6. Calculating an overall compliance score (0-100%), where a higher score indicates lower risk and better compliance.\n"
+    "7. Providing a concise summary of issues.\n"
+    "Ensure that your analysis is clear, structured, and concise."
+)
+
 
     user_message = (
         f"Below is the regulatory reference information:\n\n{regulatory_info}\n\n"
@@ -172,18 +175,6 @@ def analyze_contract(contract_text: str, regulatory_data: dict) -> str:
     except Exception as e:
         return f"Error in OpenAI API call: {e}"
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global regulatory_data
-    try:
-        regulatory_data = load_far_regulatory_data()
-        yield
-    except Exception as e:
-        print(f"Error during startup: {e}")
-        regulatory_data = {}
-    finally:
-        print("Application shutdown")
 
 
 @router.post("/analyze_contract/")
@@ -212,14 +203,14 @@ async def analyze_contract_endpoint(
         raise HTTPException(status_code=400, detail="No text extracted from file.")
 
     # Analyze the contract
-    analysis_result = analyze_contract(contract_text, regulatory_data)
+    analysis_result = analyze_contract(contract_text)
     
     # Extract risk level from the analysis
     risk_level = "HIGH"  # Default value
     if "Overall Compliance Risk Score: " in analysis_result:
         score = int(analysis_result.split("Overall Compliance Risk Score: ")[1].split("%")[0])
         print('Score: ', score)
-        risk_level = "HIGH" if score < 50 else "MEDIUM" if score < 75 else "LOW"
+        risk_level = "LOW" if score > 75 else "MEDIUM" if score > 50 else "HIGH"
 
     # Store the document and analysis in the database
     with get_db() as db:

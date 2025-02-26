@@ -12,3 +12,4 @@ python-docx
 fuzzywuzzy
 python-jose[cryptography] 
 python-multipart
+python-dotenv

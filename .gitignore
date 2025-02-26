@@ -28,3 +28,4 @@ backend/venv
 backend/extracted_dita
 *.pyc
 backend/__pycache__
+backend/.env

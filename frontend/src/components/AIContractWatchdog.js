@@ -26,13 +26,11 @@ const AIContractWatchdog = () => {
   const handleUpload = () => {
     files.forEach((fileItem, index) => {
       const formData = new FormData();
-      // Append the file with key "file" (make sure your FastAPI endpoint accepts this key)
       formData.append("file", fileItem.file);
-
-      // POST the file to your FastAPI /analyze_contract endpoint
+  
       fetch("http://localhost:8000/analyze_contract/", {
         method: "POST",
-        headers:{
+        headers: {
           'Authorization': `Bearer ${token}`
         },
         body: formData,
@@ -46,21 +44,16 @@ const AIContractWatchdog = () => {
             }
             throw new Error('Network response was not ok');
           }
-          return response.json();
+          return response.json(); // Only call this once
         })
-        .then((response) => {
-          console.log("Raw response:", response); // <-- Step 1
-          return response.json();
-        })
-        .then((data) => {
-          console.log("Parsed JSON:", data); // <-- Step 2
-          setAnalysisResult(data.analysis);
+        .then((data) => { // Use the parsed data directly
+          console.log("Parsed JSON:", data); // <-- Step 1
+          setAnalysisResult(data.analysis); // Assuming the response contains an analysis field
         })
         .catch((error) => {
           console.error("Error:", error);
         });
-      
-
+  
       // Simulate upload progress (this is just for UI feedback)
       const intervalId = setInterval(() => {
         setFiles((prevFiles) => {

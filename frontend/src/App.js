@@ -6,11 +6,13 @@ import StartingPage from "./components/StartingPage";
 import Login from "./components/Login";
 import FraudHunterAI from "./components/FraudHunterAI";
 import AIContractWatchdog from "./components/AIContractWatchdog";
+import Navbar from "./components/Navbar";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <Navbar/>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={

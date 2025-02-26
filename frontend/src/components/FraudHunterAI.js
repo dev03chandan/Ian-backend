@@ -22,49 +22,65 @@ const FraudHunterAI = () => {
 
   const handleUpload = () => {
     files.forEach((fileItem, index) => {
-      const formData = new FormData();
-      formData.append("file", fileItem.file);
+        const formData = new FormData();
+        formData.append("file", fileItem.file);
 
-      fetch("http://localhost:8000/upload-csv-invoices/", {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${token}` // Include the token in the headers
-        },
-        body: formData,
-      })
+        fetch("http://localhost:8000/upload-csv-invoices/", {
+            method: "POST",
+            headers: {
+                'Authorization': `Bearer ${token}` 
+            },
+            body: formData,
+        })
         .then(response => {
-          if (!response.ok) {
-            if (response.status === 401) {
-              // Handle unauthorized access
-              navigate('/login'); // Redirect to login if unauthorized
-              return;
+            if (!response.ok) {
+                if (response.status === 401) {
+                    navigate('/login'); 
+                    return;
+                }
+                throw new Error('Network response was not ok');
             }
-            throw new Error('Network response was not ok');
-          }
-          return response.json();
+            return response.json();
         })
         .then((data) => {
-          console.log("Parsed JSON:", data);
-          setAnalysisResult(data.analysis_report); // Assuming the response contains an analysis report
+            console.log("Parsed JSON:", data);
+
+            // Format the analysis report into Markdown
+            const formattedMarkdown = data.analysis_report.map(report => {
+                const issues = report.issues.map(issue => 
+                    `- **Issue:** ${issue.issue}\n  - **Severity:** ${issue.severity}\n  - **Risk Increase:** ${issue.risk_increase}\n  - **Recommended Action:** ${issue.recommended_action}`
+                ).join("\n");
+
+                return `
+### Invoice ID: ${report.invoice_id}
+**Risk Score:** ${report.risk_score}\n
+**Risk Level:** ${report.risk_level}\n
+**Final Recommendation:** ${report.final_recommendation}\n
+#### Issues:
+${issues}\n
+---
+`;
+            }).join("\n");
+
+            setAnalysisResult(formattedMarkdown);
         })
         .catch((error) => {
-          console.error("Error:", error);
+            console.error("Error:", error);
         });
 
-      // Simulate upload progress
-      const intervalId = setInterval(() => {
-        setFiles((prevFiles) => {
-          const updatedFiles = [...prevFiles];
-          if (updatedFiles[index].progress < 100) {
-            updatedFiles[index].progress += 5;
-          } else {
-            clearInterval(intervalId);
-          }
-          return updatedFiles;
-        });
-      }, 500);
+        const intervalId = setInterval(() => {
+            setFiles((prevFiles) => {
+                const updatedFiles = [...prevFiles];
+                if (updatedFiles[index].progress < 100) {
+                    updatedFiles[index].progress += 5;
+                } else {
+                    clearInterval(intervalId);
+                }
+                return updatedFiles;
+            });
+        }, 500);
     });
-  };
+};
 
   return (
     <div style={styles.container}>

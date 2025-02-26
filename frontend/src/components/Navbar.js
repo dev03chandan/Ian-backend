@@ -1,16 +1,22 @@
-// src/components/Navbar.js
 import React from "react";
-import { Link } from "react-router-dom";
-import logo from "../assets/logo.png"; // Update the path to your actual logo
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
+import logo from "../assets/logo.png";
 
 const Navbar = () => {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <nav style={styles.navbar}>
       <div style={styles.logoContainer}>
         <Link to="/">
-        <img src={logo} alt="ZeroRedTape Logo" style={styles.logo} />
-        {/* <span style={styles.brandText}>ZeroRedTape</span>
-        <span style={styles.tagline}>GOV AI COMPLIANCE</span> */}
+          <img src={logo} alt="ZeroRedTape Logo" style={styles.logo} />
         </Link>
       </div>
 
@@ -21,6 +27,17 @@ const Navbar = () => {
         <Link to="/fraud-hunter" style={styles.navItem}>
           Fraud Hunter AI
         </Link>
+        <Link to="/dashboard" style={styles.navItem}>
+          Dashboard
+        </Link>
+        {isAuthenticated && (
+          <button 
+            onClick={handleLogout} 
+            style={styles.logoutButton}
+          >
+            Logout
+          </button>
+        )}
       </div>
     </nav>
   );
@@ -40,21 +57,12 @@ const styles = {
     alignItems: "center",
   },
   logo: {
-    height: "40px", // Adjust the size to match your logo
+    height: "40px",
     marginRight: "10px",
-  },
-  brandText: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#232c4e",
-  },
-  tagline: {
-    fontSize: "12px",
-    color: "#555",
-    marginLeft: "5px",
   },
   navLinks: {
     display: "flex",
+    alignItems: "center",
     gap: "20px",
   },
   navItem: {
@@ -62,7 +70,21 @@ const styles = {
     color: "#232c4e",
     fontWeight: "600",
     fontSize: "16px",
-    transition: "color 0.3s",
+    padding: "8px 12px",
+    borderRadius: "4px",
+    transition: "background-color 0.3s, color 0.3s",
+    cursor: "pointer",
+  },
+  logoutButton: {
+    padding: "8px 16px",
+    backgroundColor: "#dc3545",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: "600",
+    transition: "background-color 0.3s",
   },
 };
 
