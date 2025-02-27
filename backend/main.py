@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from routers import contract_router, invoice_router, auth_router, document_router
+from routers import contract_router, invoice_router, auth_router, document_router, contract_new_router, invoice_new_route
 from routers.auth import get_current_user
 from database import init_db
 from routers.Contract import load_far_regulatory_data
@@ -48,6 +48,17 @@ app.include_router(
 )
 app.include_router(
     invoice_router,
+    tags=["Invoices"],
+    dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    contract_new_router, 
+    tags=["Contracts"],
+    dependencies=[Depends(get_current_user)]
+)
+
+app.include_router(
+    invoice_new_route,
     tags=["Invoices"],
     dependencies=[Depends(get_current_user)]
 )
