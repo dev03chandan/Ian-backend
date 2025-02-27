@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import "../styles/Dashboard.css";
+import MarkdownDisplay from "./MarkdownDisplay";
 
 const Dashboard = () => {
   const [documents, setDocuments] = useState([]);
@@ -77,12 +78,12 @@ const Dashboard = () => {
                 <Link to={`/view-report/${doc.id}`} className="action-button view">
                   View Report
                 </Link>
-                <button 
+                {/* <button 
                   className="action-button download"
                   onClick={() => window.open(`/download/${doc.id}`, '_blank')}
                 >
                   Download
-                </button>
+                </button> */}
                 {doc.status === "flagged" && (
                   <button 
                     className="action-button action"
@@ -100,4 +101,50 @@ const Dashboard = () => {
   );
 };
 
+function ViewReport() {
+  const { documentId } = useParams();
+  const [reportData, setReportData] = useState(null);
+  const { token } = useAuth();
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/documents/document/${documentId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch report");
+        }
+
+        const data = await response.json();
+        setReportData(data);
+      } catch (error) {
+        console.error("Error fetching report:", error);
+      }
+    };
+
+    if (documentId) {
+      fetchReport();
+    }
+  }, [documentId, token]);
+
+  if (!reportData) {
+    return <div>Loading...</div>;
+  }
+
+  const reportSections = reportData.report_data.split("####");
+
+  return (
+    <div className="report-container">
+      <MarkdownDisplay analysisText={reportData.report_data} /> 
+    </div>
+  );
+}
+
 export default Dashboard;
+export { ViewReport };

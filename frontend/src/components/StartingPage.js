@@ -10,24 +10,26 @@ const StartingPage = () => {
       {/* Hero Section */}
       <div style={styles.heroSection}>
         <div style={styles.heroOverlay}>
-          <div style={styles.heroContent}>
-            <img src={logo} alt="ZeroRedTape Logo" style={styles.logo} />
-            <h1 style={styles.heroTitle}>
-              Government Compliance. <br /> AI-Powered.
-            </h1>
-            <p style={styles.heroSubtitle}>
-              Government contracts are complex, full of loopholes, and prone to fraud.
-              <br />
-              ZeroRedTape uses AI to instantly scan documents for compliance violations and financial fraud.
-            </p>
-            <div style={styles.buttonContainer}>
-              <Link to="/contract-watchdog" style={styles.button}>
-                Scan Contract for Violations
-              </Link>
-              <Link to="/fraud-hunter" style={styles.button}>
-                Detect Fraud in Payments
-              </Link>
-            </div>
+        <div style={styles.heroContent}>
+            {/* <img src={logo} alt="ZeroRedTape Logo" style={styles.logo} /> */}
+            <div style={styles.whiteBox}> {/* Added white box container */}
+              <h1 style={styles.heroTitle}>
+                Government Compliance. <br /> AI-Powered.
+              </h1>
+              <p style={styles.heroSubtitle}>
+                Government contracts are complex, full of loopholes, and prone to fraud.
+                <br />
+                ZeroRedTape uses AI to instantly scan documents for compliance violations and financial fraud.
+              </p>
+              <div style={styles.buttonContainer}>
+                <Link to="/contract-watchdog" style={styles.button}>
+                  Scan Contract for Violations
+                </Link>
+                <Link to="/fraud-hunter" style={styles.button}>
+                  Detect Fraud in Payments
+                </Link>
+              </div>
+            </div> {/* End of white box container */}
           </div>
         </div>
       </div>
@@ -184,6 +186,7 @@ const styles = {
     maxWidth: "700px",
     margin: "0 auto",
     lineHeight: "1.6",
+    color: "#f9f9f9",
   },
   footer: {
     padding: "20px",
@@ -202,6 +205,14 @@ const styles = {
     color: "#232c4e",
     fontWeight: "bold",
   },
+  whiteBox: {
+    backgroundColor: "#fff",
+    padding: "30px",
+    borderRadius: "10px",
+    boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)", /* Optional shadow */
+    textAlign: "center", /* Center the text inside the box */
+  },
+
 };
 
 export default StartingPage;

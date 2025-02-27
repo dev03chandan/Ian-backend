@@ -69,3 +69,62 @@
     opacity: 0.8;
   }
   
+  /* Existing styles ... */
+
+.report-container {
+  font-family: sans-serif;
+  line-height: 1.6;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9; /* Light background */
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+.report-section {
+  margin-bottom: 20px;
+}
+
+.report-section h2 {
+  color: #232c4e; /* Darker heading color */
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.report-section ul {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+
+.report-section strong {
+  font-weight: bold;
+}
+
+.report-summary {
+  background-color: #f2f2f2;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 20px;
+  border: 1px solid #ddd;
+}
+
+.risk-level {
+  display: inline-block;
+  padding: 5px 10px;
+  margin-right: 5px;
+  border-radius: 5px;
+}
+
+.risk-level.low {
+  background-color: lightgreen;
+}
+
+.risk-level.medium {
+  background-color: orange;
+}
+
+.risk-level.high {
+  background-color: lightcoral;
+}
+
