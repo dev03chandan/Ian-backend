@@ -28,7 +28,7 @@ const AIContractWatchdog = () => {
       const formData = new FormData();
       formData.append("file", fileItem.file);
   
-      fetch("http://localhost:8000/analyze_contract/", {
+      fetch("http://localhost:8000/check_contract_against_test_cases/", {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${token}`
@@ -48,7 +48,7 @@ const AIContractWatchdog = () => {
         })
         .then((data) => { // Use the parsed data directly
           console.log("Parsed JSON:", data); // <-- Step 1
-          setAnalysisResult(data.analysis); // Assuming the response contains an analysis field
+          setAnalysisResult(data.analysis_result); // Assuming the response contains an analysis_result field
         })
         .catch((error) => {
           console.error("Error:", error);
